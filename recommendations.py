@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import json
 import random
+import operator
 from math import sqrt
 
 
@@ -43,6 +44,13 @@ def sim_pearson(items, user_a, user_b):
     return num / den
 
 
+def top_matches(items, user, count=5, method=sim_distance):
+    scores = [(other, method(items, user, other)) for other in items
+              if other != user]
+
+    return sorted(scores, reverse=True, key=operator.itemgetter(1))[:count]
+
+
 def main():
     with open("data/critics.json", "r") as file:
         critics = json.load(file)
@@ -67,6 +75,21 @@ def main():
     print("\tstandard: {:.10f}".format(result))
     result = sim_pearson(critics_normalized, *users)
     print("\tnormalized: {:.10f}".format(result))
+
+    print()
+
+    user = users[0]
+    print("Top euclidean matches for {}".format(user))
+    matches = top_matches(critics_normalized, user)
+    for other, value in matches:
+        print("\t{}: {:.10f}".format(other, value))
+
+    print()
+
+    print("Top pearson matches for {}".format(user))
+    matches = top_matches(critics_normalized, user, method=sim_pearson)
+    for other, value in matches:
+        print("\t{}: {:.10f}".format(other, value))
 
 
 if __name__ == "__main__":
