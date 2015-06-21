@@ -9,6 +9,16 @@ def top_results(results, count):
     return sorted(results, reverse=True, key=operator.itemgetter(1))[:count]
 
 
+def transform_items(items):
+    result = {}
+    for user in items:
+        for item in items[user]:
+            result.setdefault(item, {})
+            result[item][user] = items[user][item]
+
+    return result
+
+
 def sim_distance(items, user_a, user_b):
     common_items = {item for item in items[user_a]
                     if item in items[user_b]}
@@ -92,7 +102,7 @@ def main():
         ("Pearson correlation", sim_pearson),
     ]
 
-    users = (random.sample(critics.keys(), 2))
+    users = random.sample(list(critics), 2)
     print("Comparing {} and {}".format(*users))
     print()
 
@@ -111,7 +121,6 @@ def main():
         matches = top_matches(critics_normalized, user,  method=method)
         for other, value in matches:
             print("\t{}: {:.10f}".format(other, value))
-
         print()
 
     for name, method in methods:
@@ -119,7 +128,23 @@ def main():
         recomm = get_recommendations(critics_normalized, user, method=method)
         for other, value in recomm:
             print("\t{}: {:.10f}".format(other, value))
+        print()
 
+    movies = transform_items(critics)
+    movie = random.choice(list(movies))
+
+    for name, method in methods:
+        print("Movies similar to {} ({})".format(movie, name))
+        matches = top_matches(movies, movie, count=3, method=method)
+        for other, value in matches:
+            print("\t{}: {:.10f}".format(other, value))
+        print()
+
+    for name, method in methods:
+        print("Recommended critics for {} ({})".format(movie, name))
+        matches = get_recommendations(movies, movie, count=3, method=method)
+        for other, value in matches:
+            print("\t{}: {:.10f}".format(other, value))
         print()
 
     print("All done.")
