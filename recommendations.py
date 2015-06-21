@@ -5,6 +5,10 @@ import operator
 from math import sqrt
 
 
+def top_results(results, count):
+    return sorted(results, reverse=True, key=operator.itemgetter(1))[:count]
+
+
 def sim_distance(items, user_a, user_b):
     common_items = {item for item in items[user_a]
                     if item in items[user_b]}
@@ -48,7 +52,32 @@ def top_matches(items, user, count=5, method=sim_distance):
     scores = [(other, method(items, user, other)) for other in items
               if other != user]
 
-    return sorted(scores, reverse=True, key=operator.itemgetter(1))[:count]
+    return top_results(scores, count)
+
+
+def get_recommendations(items, user, count=5, method=sim_distance):
+    totals = {}
+    sums = {}
+
+    for other in items:
+        if other == user:
+            continue
+
+        result = method(items, user, other)
+        if result <= 0:
+            continue
+
+        for item in items[other]:
+            if item not in items[user] or items[user][item] == 0:
+                totals.setdefault(item, 0)
+                totals[item] += items[other][item] * result
+
+                sums.setdefault(item, 0)
+                sums[item] += result
+
+    rankings = [(item, total / sums[item]) for item, total in totals.items()]
+
+    return top_results(rankings, count)
 
 
 def main():
@@ -58,38 +87,42 @@ def main():
     with open("data/critics_normalized.json", "r") as file:
         critics_normalized = json.load(file)
 
+    methods = [
+        ("Euclidean distance", sim_distance),
+        ("Pearson correlation", sim_pearson),
+    ]
+
     users = (random.sample(critics.keys(), 2))
     print("Comparing {} and {}".format(*users))
     print()
 
-    print("Euclidean distance")
-    result = sim_distance(critics, *users)
-    print("\tstandard: {:.10f}".format(result))
-    result = sim_distance(critics_normalized, *users)
-    print("\tnormalized: {:.10f}".format(result))
-
-    print()
-
-    print("Pearson correlation")
-    result = sim_pearson(critics, *users)
-    print("\tstandard: {:.10f}".format(result))
-    result = sim_pearson(critics_normalized, *users)
-    print("\tnormalized: {:.10f}".format(result))
-
-    print()
+    for name, method in methods:
+        print(name)
+        result = method(critics, *users)
+        print("\tstandard: {:.10f}".format(result))
+        result = method(critics_normalized, *users)
+        print("\tnormalized: {:.10f}".format(result))
+        print()
 
     user = users[0]
-    print("Top euclidean matches for {}".format(user))
-    matches = top_matches(critics_normalized, user)
-    for other, value in matches:
-        print("\t{}: {:.10f}".format(other, value))
 
-    print()
+    for name, method in methods:
+        print("Top matches ({}) for {}".format(name, user))
+        matches = top_matches(critics_normalized, user,  method=method)
+        for other, value in matches:
+            print("\t{}: {:.10f}".format(other, value))
 
-    print("Top pearson matches for {}".format(user))
-    matches = top_matches(critics_normalized, user, method=sim_pearson)
-    for other, value in matches:
-        print("\t{}: {:.10f}".format(other, value))
+        print()
+
+    for name, method in methods:
+        print("Recommendations ({}) for {}".format(name, user))
+        recomm = get_recommendations(critics_normalized, user, method=method)
+        for other, value in recomm:
+            print("\t{}: {:.10f}".format(other, value))
+
+        print()
+
+    print("All done.")
 
 
 if __name__ == "__main__":
