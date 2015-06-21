@@ -90,6 +90,12 @@ def get_recommendations(items, user, count=5, method=sim_distance):
     return top_results(rankings, count)
 
 
+def get_similar_items(items, count=10):
+    items = transform_items(items)
+    return [top_matches(items, item, count=count)
+            for item in items]
+
+
 def main():
     with open("data/critics.json", "r") as file:
         critics = json.load(file)
